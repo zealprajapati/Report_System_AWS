@@ -93,8 +93,14 @@ public class ExcelGenerationController {
     public void downloadExcel(@PathVariable String id, HttpServletResponse response) throws IOException {
         log.debug("Got Request to Download File:{}", id);
         InputStream fis = excelService.getExcelBodyById(id);
+        StringBuffer sb=new StringBuffer();
+        sb.append("attachment; filename=");
+        sb.append(id);
+        sb.append(".xls");
         response.setHeader("Content-Type", "application/vnd.ms-excel");
-        response.setHeader("Content-Disposition", "attachment; filename=\"name_of_excel_file.xls\""); // TODO: File name cannot be hardcoded here
+
+        //response.setHeader("Content-Disposition", "attachment; filename=\"name_of_excel_file.xls\""); // TODO: File name cannot be hardcoded here
+        response.setHeader("Content-Disposition",sb.toString());
         FileCopyUtils.copy(fis, response.getOutputStream());
         log.debug("Downloaded File:{}", id);
     }

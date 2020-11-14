@@ -30,6 +30,9 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 @Service
@@ -79,8 +82,15 @@ public class ReportServiceImpl implements ReportService {
         RestTemplate rs = new RestTemplate();
         ExcelResponse excelResponse = new ExcelResponse();
         PDFResponse pdfResponse = new PDFResponse();
+        Future<ExcelResponse> excelResponseFuture=null;
+        Future<PDFResponse> pdfResponseFuture=null;
+
+        ExecutorService s= Executors.newCachedThreadPool();
+
         try {
-            excelResponse = rs.postForEntity("http://localhost:8888/excel", request, ExcelResponse.class).getBody();
+            excelResponseFuture=s.submit(()->rs.postForEntity("http://localhost:8888/excel", request, ExcelResponse.class).getBody());
+           // excelResponse = rs.postForEntity("http://localhost:8888/excel", request, ExcelResponse.class).getBody();
+            excelResponse=excelResponseFuture.get();
         } catch(Exception e){
             log.error("Excel Generation Error (Sync) : e", e);
             excelResponse.setReqId(request.getReqId());
@@ -89,7 +99,9 @@ public class ReportServiceImpl implements ReportService {
             updateLocal(excelResponse);
         }
         try {
-            pdfResponse = rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody();
+            pdfResponseFuture=s.submit(()->rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody());
+            //pdfResponse = rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody();
+            pdfResponse=pdfResponseFuture.get();
         } catch(Exception e){
             log.error("PDF Generation Error (Sync) : e", e);
             pdfResponse.setReqId(request.getReqId());
@@ -170,7 +182,11 @@ public class ReportServiceImpl implements ReportService {
             String key = fileLocation.split("/")[1];
             return s3Client.getObject(bucket, key).getObjectContent();
         } else if (type == FileType.EXCEL) {
-            String fileId = entity.getExcelReport().getFileId();
+            //String fileLocation = entity.getPdfReport().getFileLocation(); // this location is s3 "bucket/key"
+            //            String bucket = fileLocation.split("/")[0];
+            //            String key = fileLocation.split("/")[1];
+            //            return s3Client.getObject(bucket, key).getObjectContent();
+                  String fileId = entity.getExcelReport().getFileId();
 //            String fileLocation = entity.getExcelReport().getFileLocation();
 //            try {
 //                return new FileInputStream(fileLocation);// this location is in local, definitely sucks

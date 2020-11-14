@@ -1,5 +1,6 @@
 package com.antra.evaluation.reporting_system.service;
 
+import com.amazonaws.services.s3.AmazonS3;
 import com.antra.evaluation.reporting_system.exception.FileGenerationException;
 import com.antra.evaluation.reporting_system.pojo.api.ExcelRequest;
 import com.antra.evaluation.reporting_system.pojo.api.MultiSheetExcelRequest;
@@ -11,6 +12,7 @@ import com.antra.evaluation.reporting_system.repo.ExcelRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
@@ -27,16 +29,26 @@ public class ExcelServiceImpl implements ExcelService {
 
     private ExcelGenerationService excelGenerationService;
 
+
+    private AmazonS3 amazonS3;
+
+    @Value("${s3.bucket}")
+    private String s3Bucket;
+
+
     @Autowired
-    public ExcelServiceImpl(ExcelRepository excelRepository, ExcelGenerationService excelGenerationService) {
+    public ExcelServiceImpl(ExcelRepository excelRepository, ExcelGenerationService excelGenerationService, AmazonS3 amazonS3) {
         this.excelRepository = excelRepository;
         this.excelGenerationService = excelGenerationService;
+        this.amazonS3=amazonS3;
     }
 
     @Override
     public InputStream getExcelBodyById(String id) throws FileNotFoundException {
         Optional<ExcelFile> fileInfo = excelRepository.getFileById(id);
-        return new FileInputStream(fileInfo.orElseThrow(FileNotFoundException::new).getFileLocation());
+
+        //return new FileInputStream(fileInfo.orElseThrow(FileNotFoundException::new).getFileLocation());
+        return amazonS3.getObject(s3Bucket,fileInfo.get().getFileId()).getObjectContent();
     }
 
     @Override
@@ -54,18 +66,26 @@ public class ExcelServiceImpl implements ExcelService {
         }
         try {
             File generatedFile = excelGenerationService.generateExcelReport(data);
-            fileInfo.setFileLocation(generatedFile.getAbsolutePath());
+
             fileInfo.setFileName(generatedFile.getName());
             fileInfo.setGeneratedTime(LocalDateTime.now());
             fileInfo.setSubmitter(request.getSubmitter());
             fileInfo.setFileSize(generatedFile.length());
             fileInfo.setDescription(request.getDescription());
+            File temp=new File(generatedFile.getAbsolutePath());
+            log.debug("Upload temp file to s3 {}", generatedFile.getAbsolutePath());
+            fileInfo.setFileLocation(String.join("/",s3Bucket,fileInfo.getFileId()));
+            amazonS3.putObject(s3Bucket,fileInfo.getFileId(),temp);
+            log.debug("Uploaded");
         } catch (IOException e) {
 //            log.error("Error in generateFile()", e);
             throw new FileGenerationException(e);
         }
         excelRepository.saveFile(fileInfo);
+
+
         log.debug("Excel File Generated : {}", fileInfo);
+
         return fileInfo;
     }
 
