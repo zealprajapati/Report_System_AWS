@@ -25,5 +25,5 @@ After doing changes:
     File name cannot be hardcoded. So used StringBuffer as used for multithreaded environment.
 4. application.properties:
     Used VM options in configuartaion for AWS Credentials.
-
-
+5. Created AWS RDS table instaed of h2 table.
+    
