@@ -24,6 +24,6 @@ After doing changes:
 3. ExcelGenerationController: downloadExcel():
     File name cannot be hardcoded. So used StringBuffer as used for multithreaded environment.
 4. application.properties:
-	Used VM options in configuartaion for AWS Credentials.
+    Used VM options in configuartaion for AWS Credentials.
 
 
