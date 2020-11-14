@@ -30,6 +30,7 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -82,15 +83,16 @@ public class ReportServiceImpl implements ReportService {
         RestTemplate rs = new RestTemplate();
         ExcelResponse excelResponse = new ExcelResponse();
         PDFResponse pdfResponse = new PDFResponse();
-        Future<ExcelResponse> excelResponseFuture=null;
-        Future<PDFResponse> pdfResponseFuture=null;
+        CompletableFuture<ExcelResponse> excelResponseCompletableFuture=null;
+        CompletableFuture<PDFResponse> pdfResponseCompletableFuture=null;
 
         ExecutorService s= Executors.newCachedThreadPool();
 
         try {
-            excelResponseFuture=s.submit(()->rs.postForEntity("http://localhost:8888/excel", request, ExcelResponse.class).getBody());
+            excelResponseCompletableFuture= (CompletableFuture<ExcelResponse>) s.submit(()->rs.postForEntity("http://localhost:8888/excel", request, ExcelResponse.class).getBody());
+
            // excelResponse = rs.postForEntity("http://localhost:8888/excel", request, ExcelResponse.class).getBody();
-            excelResponse=excelResponseFuture.get();
+            excelResponse=excelResponseCompletableFuture.get();
         } catch(Exception e){
             log.error("Excel Generation Error (Sync) : e", e);
             excelResponse.setReqId(request.getReqId());
@@ -99,9 +101,9 @@ public class ReportServiceImpl implements ReportService {
             updateLocal(excelResponse);
         }
         try {
-            pdfResponseFuture=s.submit(()->rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody());
+            pdfResponseCompletableFuture= (CompletableFuture<PDFResponse>) s.submit(()->rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody());
             //pdfResponse = rs.postForEntity("http://localhost:9999/pdf", request, PDFResponse.class).getBody();
-            pdfResponse=pdfResponseFuture.get();
+            pdfResponse=pdfResponseCompletableFuture.get();
         } catch(Exception e){
             log.error("PDF Generation Error (Sync) : e", e);
             pdfResponse.setReqId(request.getReqId());
